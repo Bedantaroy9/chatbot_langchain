@@ -1,0 +1,105 @@
+1. ChatMessageHistory
+from langchain_community.chat_message_histories import ChatMessageHistory
+A concrete in-memory implementation of LangChain's chat memory.
+
+Stores a list of messages (HumanMessage, AIMessage, etc.).
+
+Useful for temporary session history in simple apps.
+
+2. BaseChatMessageHistory
+
+It’s an abstract base class (or interface) that defines the structure and expected behavior for any type of chat memory storage in LangChain.
+Think of it like a blueprint.
+
+LangChain uses it to make sure that all types of chat history (whether stored in memory, Redis, a database, etc.) follow the same rules and functions.
+
+3. get_session_history(session_id)
+store = {}
+
+def get_session_history(session_id: str) -> BaseChatMessageHistory:
+    if session_id not in store:
+        store[session_id] = ChatMessageHistory()
+    return store[session_id]
+
+This function returns session-specific chat history.
+Works like a memory store or cache.
+Enables per-user conversations (based on session_id).
+
+4. MessagesPlaceholder
+
+from langchain_core.prompts import MessagesPlaceholder
+A dynamic placeholder in a ChatPromptTemplate for chat history.
+
+Syntax:
+MessagesPlaceholder(variable_name="messages")
+When used with memory, LangChain will inject full conversation history here.
+
+5. ChatPromptTemplate
+
+from langchain_core.prompts import ChatPromptTemplate
+
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "You are a helpful assistant."),
+    MessagesPlaceholder(variable_name="messages")
+])
+Creates a multi-message prompt.
+
+system role sets the behavior/personality.
+
+MessagesPlaceholder inserts the session's past messages dynamically.
+
+6. Prompt Chaining
+
+chain = prompt | model
+LangChain supports piping prompts to models using |.
+
+You build composable, readable chains:
+prompt ➝ model ➝ parser (optional)
+
+7. RunnableWithMessageHistory
+
+from langchain_core.runnables.history import RunnableWithMessageHistory
+
+with_message_history = RunnableWithMessageHistory(
+    chain,
+    get_session_history,
+    input_messages_key="messages"
+)
+What it does:
+Manages:
+
+Injecting past chat messages into the prompt
+
+Storing new user/AI messages back into history
+
+Why input_messages_key="messages"?
+Ensures LangChain looks in {"messages": [...]} for message history
+
+Must match the variable name used in MessagesPlaceholder(...)
+
+Example Flow Summary
+User sends a message
+
+get_session_history("user123") fetches history
+
+LangChain combines:
+
+Past messages
+
+Current message
+
+Injects all into MessagesPlaceholder
+
+Full prompt goes to model
+
+Model responds
+
+LangChain saves both messages back to history
+
+ Best Practices
+Always pair MessagesPlaceholder with RunnableWithMessageHistory.
+
+Use session_id to isolate conversations.
+
+Wrap prompt | model into RunnableWithMessageHistory for clean chaining.
+
